@@ -2,6 +2,9 @@ name: Build HGhub Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -14,33 +17,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK components
-        run: |
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
-            "ndk;28.2.13676358"
+      - name: Install Android NDK
+        run: sdkmanager "ndk;28.2.13676358" "build-tools;35.0.0"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -59,83 +56,7 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p artifacts
-          find src-tauri/gen/android/app/build/outputs \
-            -type f -name "*.apk" -exec cp {} artifacts/ \;
-          test -n "$(find artifacts -name '*.apk' -print -quit)"
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HGhub-Android-ARM64-unsigned
-          path: artifacts/*.apk
-          if-no-files-found: error
-          retention-days: 7
-EOF.
-mkdir -p .github/workflows
-
-cat > .github/workflows/android-apk.yml <<'EOF'
-name: Build HGhub Android APK
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  build-android:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK components
-        run: |
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
-            "ndk;28.2.13676358"
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Initialize Android
-        run: pnpm exec tauri android init --ci
-
-      - name: Build Android APK
-        run: pnpm exec tauri android build --apk --target aarch64
-
-      - name: Collect APK
-        run: |
-          mkdir -p artifacts
-          find src-tauri/gen/android/app/build/outputs \
+          find src-tauri/gen/android/app/build/outputs/apk \
             -type f -name "*.apk" -exec cp {} artifacts/ \;
           test -n "$(find artifacts -name '*.apk' -print -quit)"
 

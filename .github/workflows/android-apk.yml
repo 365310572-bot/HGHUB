@@ -62,10 +62,38 @@ jobs:
             -type f -name "*.apk" -exec cp {} artifacts/ \;
           test -n "$(find artifacts -name '*.apk' -print -quit)"
 
+     
+      - name: Sign APK
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          KS="$RUNNER_TEMP/hghub-release.keystore"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
+          BT="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          APKSIGNER="$BT/apksigner"
+
+          for f in artifacts/*.apk; do
+            "$APKSIGNER" sign \
+              --ks "$KS" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass "pass:$STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              "$f"
+            "$APKSIGNER" verify "$f"
+          done
+
+          rm -f "$KS"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HGhub-Android-ARM64-unsigned
+          name: HGhub-Android-ARM64-signed
           path: artifacts/*.apk
           if-no-files-found: error
           retention-days: 7

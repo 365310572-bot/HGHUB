@@ -31,3 +31,8 @@ docs/API.md
 
 # Agent instructions (local)
 AGENTS.md
+hghub-release.keystore
+
+# Android signing keys
+*.keystore
+*.jks
